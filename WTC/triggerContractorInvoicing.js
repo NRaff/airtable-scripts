@@ -9,5 +9,6 @@ const updatedContractors = contractors.records.map(ct => {
     }
   })
 })
-await contractorsTable.updateRecordsAsync(updatedContractors)
-console.log(`Sent ${updatedContractors.length} contractor invoices.`)
+while (updatedContractors.length > 0) {
+  contractorsTable.updateRecordsAsync(updatedContractors.splice(0, 45))
+}
