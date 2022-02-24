@@ -26,9 +26,12 @@ const PARTICIPANT_FIELDS = {
 
 const MPLT_KEYS = Object.keys(PARTICIPANT_FIELDS)
 const regTable = base.getTable('Team Registration')
+const tempPTable = base.getTable('⚡️Temp Participant Registration')
 const regFields = regTable.fields
 const regRecord = await regTable.selectRecordAsync(regRec)
-console.log(createParticipants(regRecord))
+const newParticipants = createParticipants(regRecord)
+const newRecIds = await tempPTable.createRecordsAsync(newParticipants)
+output.set('newPlayers', newRecIds)
 
 function createParticipants(record) {
   const participants = []
@@ -45,7 +48,13 @@ function createParticipants(record) {
     pFields.forEach(pField => {
       for (const key of MPLT_KEYS) {
         if (pField.includes(key)) {
-          newPlayer.fields[key] = record.getCellValue(pField)
+          const { mapsTo } = PARTICIPANT_FIELDS[key]
+          if (key === 'USTA Rating' || key === 'T-Shirt Size') {
+            const val = record.getCellValue(pField) ? record.getCellValue(pField).name : ''
+            newPlayer.fields[mapsTo] = val
+          } else {
+            newPlayer.fields[mapsTo] = record.getCellValue(pField)
+          }
         }
       }
     })
