@@ -1,13 +1,27 @@
-const { menuItem, sqftTiers } = input.config()
-const pricingReview = base.getTable('⚡️ Pricing Review')
+const { menuItem } = input.config()
 
-const reviewItems = sqftTiers.map(tier => {
+const fields = {
+  min: 'Min',
+  max: 'Max',
+  overWriteText: 'Overwrite Text'
+}
+
+const defaultTable = base.getTable('⚙️ Default Tiers')
+const activeDefView = defaultTable.getView('Active Defaults')
+const activeDefaults = await activeDefView.selectRecordsAsync({
+  fields: Object.values(fields)
+})
+const tieredPricingMenu = base.getTable('🪜 Tiered Pricing Menu')
+
+const reviewItems = activeDefaults.records.map(tier => {
   return ({
     fields: {
-      "Sq. Ft Tier": [{ id: tier }],
-      "💵 Pricing Menu": [{ id: menuItem }]
+      [fields.min]: tier.getCellValue(fields.min),
+      [fields.max]: tier.getCellValue(fields.max),
+      [fields.overWriteText]: tier.getCellValueAsString(fields.overWriteText),
+      'Menu Item': [{ id: menuItem }]
     }
   })
 })
 
-await pricingReview.createRecordsAsync(reviewItems)
+await tieredPricingMenu.createRecordsAsync(reviewItems)
