@@ -1,28 +1,52 @@
-const { order, requestedItems, estSqFt, sqFeetName } = input.config()
+class PriceTiers {
+  constructor(records) {
+    this.records = records
+    this.tiers = {}
+    this.createTiers()
+  }
 
-const itemizedOrders = base.getTable('⚡️ Order Items')
-const orderItems = requestedItems.map(item => {
-  return ({
-    fields: {
-      "Order": [{ id: order }],
-      "Menu Item": [{ id: item }]
-    }
-  })
-})
-
-if (sqFeetName[0].includes('=')) {
-  const maxString = sqFeetName[0].split('= ')
-  const maxSqFt = parseInt(maxString[1].split(',').join(''))
-
-  if (sqFeetName[0].includes('>')) {
-    const numItems = Math.ceil((estSqFt - maxSqFt) / 500.00)
-    orderItems.push({
-      fields: {
-        "Order": [{ id: order }],
-        "Menu Item": [{ id: 'recy6cFujQ8xFb6dN' }],
-        "Number Ordered (if applicable)": numItems
-      }
+  createTiers() {
+    this.records.forEach(tier => {
+      const mItemId = tier.getCellValue('Menu Item')[0].id
+      this.tiers[mItemId] = tier
     })
   }
 }
-await itemizedOrders.createRecordsAsync(orderItems)
+
+const {
+  menuItems,
+  order,
+  sqft,
+  tieredPricingItems
+} = input.config()
+// get applicable tiered pricing
+const tieredPriceTable = base.getTable('🪜 Tiered Pricing Menu')
+const activePriceTiers = tieredPriceTable.getView('Active Pricing')
+const pricedTiers = await activePriceTiers.selectRecordsAsync({
+  fields: [
+    'Menu Item',
+    'Min',
+    'Max',
+    'Key'
+  ],
+  recordIds: tieredPricingItems
+})
+const { tiers } = new PriceTiers(pricedTiers.records)
+// given the applicable price tiers, map the menuItems 
+// and price tiers together to create the order item (connect based on menu item id)
+// iterate over menuItems
+const orderItems = menuItems.map(item => {
+  const itemTier = tiers[item] ? [{ id: tiers[item].id }] : []
+  return {
+    fields: {
+      'Order': [{ id: order }],
+      'Menu Item': [{ id: item }],
+      'Menu Item Tier': itemTier
+    }
+  }
+})
+
+const orderItemsTable = base.getTable('⚡️ Order Items')
+orderItemsTable.createRecordsAsync(orderItems)
+    // match pricedTier based on menuItem
+    // create orderItem using menu item and matched pricedTier
