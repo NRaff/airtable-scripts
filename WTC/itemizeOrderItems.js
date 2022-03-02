@@ -1,3 +1,12 @@
+const {
+  menuItems,
+  order,
+  sqft,
+  tieredPricingItems,
+  addOnSqFt
+} = input.config()
+const [SQ_FT_ADDON] = addOnSqFt
+const SQ_FT_MAX = 1000000 // 1 million
 class PriceTiers {
   constructor(records) {
     this.records = records
@@ -13,13 +22,6 @@ class PriceTiers {
   }
 }
 
-const {
-  menuItems,
-  order,
-  sqft,
-  tieredPricingItems
-} = input.config()
-// get applicable tiered pricing
 const tieredPriceTable = base.getTable('🪜 Tiered Pricing Menu')
 const activePriceTiers = tieredPriceTable.getView('Active Pricing')
 const pricedTiers = await activePriceTiers.selectRecordsAsync({
@@ -31,10 +33,7 @@ const pricedTiers = await activePriceTiers.selectRecordsAsync({
   ],
   recordIds: tieredPricingItems
 })
-const { tiers } = new PriceTiers(pricedTiers.records)
-// given the applicable price tiers, map the menuItems 
-// and price tiers together to create the order item (connect based on menu item id)
-// iterate over menuItems
+const { tiers, records } = new PriceTiers(pricedTiers.records)
 const orderItems = menuItems.map(item => {
   const itemTier = tiers[item] ? [{ id: tiers[item].id }] : []
   return {
@@ -46,7 +45,23 @@ const orderItems = menuItems.map(item => {
   }
 })
 
+function createAddOn() {
+  const [tierMin, tierMax] = [records[0].getCellValue('Min'), records[0].getCellValue('Max')]
+  console.log(tierMax)
+  if (tierMax >= SQ_FT_MAX) {
+    const extraItems = Math.ceil((sqft - tierMin) / 500)
+    orderItems.push({
+      fields: {
+        'Order': [{ id: order }],
+        'Menu Item': [{ id: SQ_FT_ADDON }],
+        'Number Ordered (if applicable)': extraItems,
+        'Menu Item Tier': []
+      }
+    })
+  }
+}
+
+createAddOn()
+
 const orderItemsTable = base.getTable('⚡️ Order Items')
 orderItemsTable.createRecordsAsync(orderItems)
-    // match pricedTier based on menuItem
-    // create orderItem using menu item and matched pricedTier
